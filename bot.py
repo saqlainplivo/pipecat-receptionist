@@ -14,7 +14,7 @@ import time
 from loguru import logger
 
 from pipecat.audio.vad.silero import SileroVADAnalyzer
-from pipecat.frames.frames import LLMRunFrame, EndFrame
+from pipecat.frames.frames import LLMRunFrame
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
@@ -102,7 +102,6 @@ class CallTracker:
         self.transcript_parts: list[str] = []
         self.detected_intent = "unknown"
         self.start_time = time.time()
-        self.stt_error_count = 0
 
     @property
     def duration(self) -> int:
@@ -136,7 +135,7 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool, caller_number: 
 
     llm = OpenAILLMService(
         api_key=os.getenv("OPENAI_API_KEY"),
-        model="gpt-4.1-mini",
+        model="gpt-4o-mini",
     )
 
     tts = DeepgramTTSService(
@@ -175,15 +174,13 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool, caller_number: 
     llm.register_function("transfer_to_support", handle_transfer_to_support)
 
     # Conversation context with tools
-    context_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-    context = LLMContext(context_messages, tools=TOOLS)
-
-    vad_analyzer = SileroVADAnalyzer()
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    context = LLMContext(messages, tools=TOOLS)
 
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
         context,
         user_params=LLMUserAggregatorParams(
-            vad_analyzer=vad_analyzer,
+            vad_analyzer=SileroVADAnalyzer(),
         ),
     )
 
@@ -207,14 +204,13 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool, caller_number: 
             audio_out_sample_rate=8000,
             enable_metrics=True,
             enable_usage_metrics=True,
-            allow_interruptions=True,
         ),
     )
 
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):
         logger.info(f"Call connected from {caller_number}")
-        context_messages.append(
+        messages.append(
             {
                 "role": "system",
                 "content": "A caller just connected. Greet them warmly.",
@@ -227,15 +223,6 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool, caller_number: 
         logger.info(f"Call disconnected from {caller_number} (duration: {call_tracker.duration}s)")
         call_tracker.save()
         await task.cancel()
-
-    # Track user transcripts
-    @stt.event_handler("on_transcript")
-    async def on_transcript(processor, frame):
-        if hasattr(frame, "text") and frame.text:
-            text = frame.text.strip()
-            if text:
-                call_tracker.add_user_message(text)
-                logger.info(f"Caller: {text}")
 
     runner = PipelineRunner(handle_sigint=handle_sigint)
     await runner.run(task)

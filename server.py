@@ -161,12 +161,11 @@ async def websocket_endpoint(websocket: WebSocket):
 
     try:
         from bot import bot
-        from pipecat.runner.types import RunnerArguments
+        from pipecat.runner.types import WebSocketRunnerArguments
 
-        runner_args = RunnerArguments(
+        runner_args = WebSocketRunnerArguments(
             websocket=websocket,
             body=body,
-            handle_sigint=False,
         )
         await bot(runner_args)
 

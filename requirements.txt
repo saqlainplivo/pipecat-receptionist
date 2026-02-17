@@ -1,6 +1,4 @@
-pipecat-ai[silero,deepgram,openai,elevenlabs]
-livekit-agents[silero,deepgram,openai,elevenlabs,turn-detector]~=1.0
-livekit-api>=1.1.0
+pipecat-ai[silero,deepgram,openai,websocket,runner]>=0.0.102
 fastapi>=0.110.0
 uvicorn>=0.29.0
 python-dotenv>=1.0.0
