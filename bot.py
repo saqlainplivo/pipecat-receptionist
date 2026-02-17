@@ -27,7 +27,7 @@ from pipecat.runner.types import RunnerArguments
 from pipecat.runner.utils import parse_telephony_websocket
 from pipecat.serializers.plivo import PlivoFrameSerializer
 from pipecat.services.deepgram.stt import DeepgramSTTService
-from pipecat.services.openai.tts import OpenAITTSService
+from pipecat.services.deepgram.tts import DeepgramTTSService
 from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.transports.base_transport import BaseTransport
 from pipecat.transports.websocket.fastapi import (
@@ -139,9 +139,9 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool, caller_number: 
         model="gpt-4.1-mini",
     )
 
-    tts = OpenAITTSService(
-        api_key=os.getenv("OPENAI_API_KEY"),
-        voice="alloy",
+    tts = DeepgramTTSService(
+        api_key=os.getenv("DEEPGRAM_API_KEY"),
+        voice="aura-asteria-en",
     )
 
     # Register function handlers
