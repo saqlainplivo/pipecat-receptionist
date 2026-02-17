@@ -13,6 +13,8 @@ import time
 
 from loguru import logger
 
+from pipecat.adapters.schemas.function_schema import FunctionSchema
+from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.frames.frames import LLMRunFrame
 from pipecat.pipeline.pipeline import Pipeline
@@ -28,6 +30,7 @@ from pipecat.runner.utils import parse_telephony_websocket
 from pipecat.serializers.plivo import PlivoFrameSerializer
 from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.deepgram.tts import DeepgramTTSService
+from pipecat.services.llm_service import FunctionCallParams
 from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.transports.base_transport import BaseTransport
 from pipecat.transports.websocket.fastapi import (
@@ -58,40 +61,34 @@ IMPORTANT CONVERSATION RULES:
 - Your output will be converted to audio, so avoid special characters or formatting.
 - If you can't understand what someone said, politely ask them to repeat."""
 
-TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "get_business_hours",
-            "description": "Get the business hours for Acme Corp",
-            "parameters": {"type": "object", "properties": {}, "required": []},
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_location",
-            "description": "Get the office location/address of Acme Corp",
-            "parameters": {"type": "object", "properties": {}, "required": []},
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "transfer_to_sales",
-            "description": "Transfer the caller to the sales team",
-            "parameters": {"type": "object", "properties": {}, "required": []},
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "transfer_to_support",
-            "description": "Transfer the caller to the support team",
-            "parameters": {"type": "object", "properties": {}, "required": []},
-        },
-    },
-]
+TOOLS = ToolsSchema(
+    standard_tools=[
+        FunctionSchema(
+            name="get_business_hours",
+            description="Get the business hours for Acme Corp",
+            properties={},
+            required=[],
+        ),
+        FunctionSchema(
+            name="get_location",
+            description="Get the office location/address of Acme Corp",
+            properties={},
+            required=[],
+        ),
+        FunctionSchema(
+            name="transfer_to_sales",
+            description="Transfer the caller to the sales team",
+            properties={},
+            required=[],
+        ),
+        FunctionSchema(
+            name="transfer_to_support",
+            description="Transfer the caller to the support team",
+            properties={},
+            required=[],
+        ),
+    ]
+)
 
 
 class CallTracker:
@@ -143,30 +140,30 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool, caller_number: 
         voice="aura-asteria-en",
     )
 
-    # Register function handlers
-    async def handle_get_business_hours(function_name, tool_call_id, args, llm, context, result_callback):
+    # Register function handlers (new FunctionCallParams API)
+    async def handle_get_business_hours(params: FunctionCallParams):
         call_tracker.set_intent("hours_inquiry")
-        await result_callback(
+        await params.result_callback(
             "Acme Corp is open Monday to Friday, 9 AM to 5 PM Pacific time. "
             "We are closed on weekends and major holidays."
         )
 
-    async def handle_get_location(function_name, tool_call_id, args, llm, context, result_callback):
+    async def handle_get_location(params: FunctionCallParams):
         call_tracker.set_intent("location_inquiry")
-        await result_callback(
+        await params.result_callback(
             "Acme Corp is located at 123 Main Street, San Francisco, California. "
             "We have free visitor parking available."
         )
 
-    async def handle_transfer_to_sales(function_name, tool_call_id, args, llm, context, result_callback):
+    async def handle_transfer_to_sales(params: FunctionCallParams):
         call_tracker.set_intent("sales_transfer")
         logger.info(f"TRANSFER: Caller {caller_number} -> Sales")
-        await result_callback("Connecting to the sales team now.")
+        await params.result_callback("Connecting to the sales team now.")
 
-    async def handle_transfer_to_support(function_name, tool_call_id, args, llm, context, result_callback):
+    async def handle_transfer_to_support(params: FunctionCallParams):
         call_tracker.set_intent("support_transfer")
         logger.info(f"TRANSFER: Caller {caller_number} -> Support")
-        await result_callback("Connecting to the support team now.")
+        await params.result_callback("Connecting to the support team now.")
 
     llm.register_function("get_business_hours", handle_get_business_hours)
     llm.register_function("get_location", handle_get_location)
