@@ -1,0 +1,10 @@
+pipecat-ai[silero,deepgram,openai,elevenlabs]
+livekit-agents[silero,deepgram,openai,elevenlabs,turn-detector]~=1.0
+livekit-api>=1.1.0
+fastapi>=0.110.0
+uvicorn>=0.29.0
+python-dotenv>=1.0.0
+websockets>=12.0
+psycopg2-binary>=2.9.0
+loguru>=0.7.0
+plivo>=4.47.0
