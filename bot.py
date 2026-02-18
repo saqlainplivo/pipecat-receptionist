@@ -16,7 +16,7 @@ from loguru import logger
 from pipecat.adapters.schemas.function_schema import FunctionSchema
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.audio.vad.silero import SileroVADAnalyzer
-from pipecat.frames.frames import LLMRunFrame
+from pipecat.frames.frames import LLMRunFrame, TextFrame
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
@@ -207,13 +207,19 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool, caller_number: 
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):
         logger.info(f"Call connected from {caller_number}")
+        # Send an immediate greeting to minimize latency
+        greeting = "Hello, thank you for calling Acme Corp. How can I help you today?"
+        await task.queue_frames([TextFrame(greeting), LLMRunFrame()])
+        
+        # Track the greeting in the transcript
+        call_tracker.add_assistant_message(greeting)
+        
         messages.append(
             {
                 "role": "system",
-                "content": "A caller just connected. Greet them warmly.",
+                "content": "A caller just connected and you have already greeted them with: 'Hello, thank you for calling Acme Corp. How can I help you today?' Now, wait for their response and help them.",
             }
         )
-        await task.queue_frames([LLMRunFrame()])
 
     @transport.event_handler("on_client_disconnected")
     async def on_client_disconnected(transport, client):
