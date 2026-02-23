@@ -25,7 +25,7 @@ import os
 import plivo
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, WebSocket
-from fastapi.responses import PlainTextResponse, JSONResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, JSONResponse
 from loguru import logger
 from starlette.websockets import WebSocketState
 
@@ -66,9 +66,161 @@ async def health():
     }
 
 
+FRONTEND_HTML = """\
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acme Corp AI Receptionist</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #f5f7fa; color: #1a1a2e; min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 1.5rem;
+  }
+  .container { max-width: 440px; width: 100%; }
+  h1 { font-size: 1.6rem; text-align: center; margin-bottom: .25rem; }
+  .subtitle { text-align: center; color: #555; margin-bottom: 2rem; font-size: .95rem; }
+  .card {
+    background: #fff; border-radius: 12px; padding: 2rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,.08);
+  }
+  .card h2 { font-size: 1.1rem; margin-bottom: 1.25rem; }
+  label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: .35rem; color: #333; }
+  .phone-row { display: flex; gap: .5rem; margin-bottom: 1.25rem; }
+  select, input {
+    border: 1px solid #d0d5dd; border-radius: 8px; padding: .6rem .75rem;
+    font-size: .95rem; outline: none; transition: border-color .15s;
+  }
+  select:focus, input:focus { border-color: #4f46e5; }
+  select { width: 120px; flex-shrink: 0; background: #fff; }
+  input { flex: 1; min-width: 0; }
+  button {
+    width: 100%; padding: .7rem; border: none; border-radius: 8px;
+    background: #4f46e5; color: #fff; font-size: 1rem; font-weight: 600;
+    cursor: pointer; transition: background .15s; display: flex;
+    align-items: center; justify-content: center; gap: .5rem;
+  }
+  button:hover { background: #4338ca; }
+  button:disabled { background: #a5b4fc; cursor: not-allowed; }
+  .spinner {
+    width: 18px; height: 18px; border: 2.5px solid rgba(255,255,255,.3);
+    border-top-color: #fff; border-radius: 50%;
+    animation: spin .6s linear infinite; display: none;
+  }
+  button.loading .spinner { display: inline-block; }
+  button.loading .btn-text { display: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .banner {
+    margin-top: 1rem; padding: .75rem 1rem; border-radius: 8px;
+    font-size: .9rem; display: none;
+  }
+  .banner.success { display: block; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+  .banner.error { display: block; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+  .footer { text-align: center; margin-top: 2rem; font-size: .8rem; color: #888; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Acme Corp AI Receptionist</h1>
+  <p class="subtitle">Enter a phone number below and our AI receptionist will call you.</p>
+
+  <div class="card">
+    <h2>Place a Call</h2>
+    <label for="code">Country code</label>
+    <div class="phone-row">
+      <select id="code">
+        <option value="+91" selected>+91 India</option>
+        <option value="+1">+1 US/CA</option>
+        <option value="+44">+44 UK</option>
+        <option value="+61">+61 Australia</option>
+        <option value="+49">+49 Germany</option>
+        <option value="+33">+33 France</option>
+        <option value="+81">+81 Japan</option>
+        <option value="+86">+86 China</option>
+        <option value="+971">+971 UAE</option>
+        <option value="+65">+65 Singapore</option>
+        <option value="+55">+55 Brazil</option>
+        <option value="+27">+27 South Africa</option>
+        <option value="+82">+82 South Korea</option>
+        <option value="+39">+39 Italy</option>
+        <option value="+34">+34 Spain</option>
+        <option value="+7">+7 Russia</option>
+        <option value="+62">+62 Indonesia</option>
+        <option value="+60">+60 Malaysia</option>
+        <option value="+966">+966 Saudi Arabia</option>
+        <option value="+234">+234 Nigeria</option>
+      </select>
+      <input type="tel" id="phone" placeholder="Phone number" autocomplete="tel">
+    </div>
+    <button id="callBtn" type="button">
+      <span class="btn-text">Place Call</span>
+      <span class="spinner"></span>
+    </button>
+    <div id="banner" class="banner"></div>
+  </div>
+
+  <p class="footer">Powered by Pipecat &bull; Groq &bull; Deepgram &bull; Plivo</p>
+</div>
+<script>
+(function() {
+  const btn = document.getElementById('callBtn');
+  const banner = document.getElementById('banner');
+  const phoneInput = document.getElementById('phone');
+  const codeSelect = document.getElementById('code');
+
+  btn.addEventListener('click', async function() {
+    const number = phoneInput.value.replace(/[^\\d]/g, '');
+    if (!number) { showBanner('Please enter a phone number.', 'error'); return; }
+
+    const to = codeSelect.value + number;
+    btn.classList.add('loading');
+    btn.disabled = true;
+    banner.className = 'banner';
+
+    try {
+      const res = await fetch('/call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: to })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showBanner('Call initiated! You should receive a call shortly.', 'success');
+      } else {
+        showBanner(data.error || 'Something went wrong.', 'error');
+      }
+    } catch (e) {
+      showBanner('Network error. Please try again.', 'error');
+    } finally {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
+  });
+
+  function showBanner(msg, type) {
+    banner.textContent = msg;
+    banner.className = 'banner ' + type;
+  }
+})();
+</script>
+</body>
+</html>
+"""
+
+
 @app.get("/")
 async def root():
-    """Root endpoint - basic service info."""
+    """Serve the frontend UI."""
+    return HTMLResponse(content=FRONTEND_HTML)
+
+
+@app.get("/api")
+async def api_info():
+    """API info endpoint — programmatic access to service metadata."""
     return {
         "status": "ok",
         "service": "acme-corp-receptionist",
@@ -238,7 +390,8 @@ if __name__ == "__main__":
     logger.info(f"Starting Acme Corp AI Receptionist on port {port}")
     logger.info("Endpoints:")
     logger.info(f"  GET      /health - Health check")
-    logger.info(f"  GET      /       - Service info")
+    logger.info(f"  GET      /       - Frontend UI")
+    logger.info(f"  GET      /api    - Service info (JSON)")
     logger.info(f"  GET/POST /answer - Plivo Answer URL")
     logger.info(f"  WS       /ws     - WebSocket audio streaming")
     logger.info(f"  GET      /logs   - View call logs")
