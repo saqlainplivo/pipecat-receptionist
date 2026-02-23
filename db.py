@@ -30,8 +30,9 @@ def init_db():
         cur.execute("""
             CREATE TABLE IF NOT EXISTS receptionist_call_logs (
                 id SERIAL PRIMARY KEY,
-                caller_number VARCHAR(20) NOT NULL,
+                caller_number VARCHAR(50) NOT NULL,
                 transcript TEXT DEFAULT '',
+                summary TEXT DEFAULT '',
                 detected_intent VARCHAR(100) DEFAULT 'unknown',
                 duration INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT NOW()
@@ -46,7 +47,7 @@ def init_db():
         conn.close()
 
 
-def log_call(caller_number: str, transcript: str, detected_intent: str, duration: int):
+def log_call(caller_number: str, transcript: str, detected_intent: str, duration: int, summary: str = ""):
     """Log a completed call to the database."""
     conn = get_connection()
     if not conn:
@@ -58,11 +59,11 @@ def log_call(caller_number: str, transcript: str, detected_intent: str, duration
         cur.execute(
             """
             INSERT INTO receptionist_call_logs
-                (caller_number, transcript, detected_intent, duration)
-            VALUES (%s, %s, %s, %s)
+                (caller_number, transcript, detected_intent, duration, summary)
+            VALUES (%s, %s, %s, %s, %s)
             RETURNING id, created_at
             """,
-            (caller_number, transcript, detected_intent, duration),
+            (caller_number, transcript, detected_intent, duration, summary),
         )
         row = cur.fetchone()
         conn.commit()

@@ -10,13 +10,14 @@ Handles incoming calls with:
 
 import os
 import time
+import openai
 
 from loguru import logger
 
 from pipecat.adapters.schemas.function_schema import FunctionSchema
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.audio.vad.silero import SileroVADAnalyzer
-from pipecat.frames.frames import LLMRunFrame, TextFrame
+from pipecat.frames.frames import LLMRunFrame, TextFrame, TranscriptionFrame
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
@@ -98,6 +99,7 @@ class CallTracker:
         self.caller_number = caller_number
         self.transcript_parts: list[str] = []
         self.detected_intent = "unknown"
+        self.summary = ""
         self.start_time = time.time()
 
     @property
@@ -118,8 +120,34 @@ class CallTracker:
         self.detected_intent = intent
         logger.info(f"Intent detected: {intent}")
 
-    def save(self):
-        log_call(self.caller_number, self.transcript, self.detected_intent, self.duration)
+    async def save_enhanced(self, llm_service):
+        """Perform post-call analysis and save to DB."""
+        if not self.transcript_parts:
+            return
+
+        try:
+            # Use LLM to perform post-call analysis for better intent and summary
+            analysis_prompt = f"Analyze this phone call transcript and provide: 1. A 1-sentence summary. 2. The primary intent (one of: sales, support, hours, location, other).\n\nTranscript:\n{self.transcript}"
+            
+            # Simple direct call to LLM for analysis
+            response = await llm_service.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {"role": "system", "content": "You are a call analyst. Provide output in JSON format: {\"summary\": \"...\", \"intent\": \"...\"}"},
+                    {"role": "user", "content": analysis_prompt}
+                ],
+                response_format={"type": "json_object"}
+            )
+            
+            import json
+            analysis = json.loads(response.choices[0].message.content)
+            self.summary = analysis.get("summary", "No summary")
+            self.detected_intent = analysis.get("intent", "unknown")
+            
+        except Exception as e:
+            logger.error(f"Post-call analysis failed: {e}")
+
+        log_call(self.caller_number, self.transcript, self.detected_intent, self.duration, self.summary)
 
 
 async def run_bot(transport: BaseTransport, handle_sigint: bool, caller_number: str):
@@ -128,11 +156,31 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool, caller_number: 
     call_tracker = CallTracker(caller_number)
 
     # Initialize AI services
-    stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
+    stt = DeepgramSTTService(
+        api_key=os.getenv("DEEPGRAM_API_KEY"),
+        model="nova-2",
+        interim_results=True,
+        endpointing=300, # Use Deepgram's endpointing for faster turn-taking
+    )
 
+    # --- OLD OPENAI SETUP (Commented Out) ---
+    # llm = OpenAILLMService(
+    #     api_key=os.getenv("OPENAI_API_KEY"),
+    #     model="gpt-4o-mini",
+    # )
+
+    # --- NVIDIA NIM SETUP (Commented Out) ---
+    # llm = OpenAILLMService(
+    #     api_key=os.getenv("NVIDIA_NIM_API_KEY"),
+    #     base_url="https://integrate.api.nvidia.com/v1",
+    #     model="zhipuai/glm-4-9b-chat",
+    # )
+
+    # --- GROQ SETUP (Fast LLM Inference) ---
     llm = OpenAILLMService(
-        api_key=os.getenv("OPENAI_API_KEY"),
-        model="gpt-4o-mini",
+        api_key=os.getenv("GROQ_API_KEY"),
+        base_url="https://api.groq.com/openai/v1",
+        model="llama-3.3-70b-versatile",
     )
 
     tts = DeepgramTTSService(
@@ -224,8 +272,21 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool, caller_number: 
     @transport.event_handler("on_client_disconnected")
     async def on_client_disconnected(transport, client):
         logger.info(f"Call disconnected from {caller_number} (duration: {call_tracker.duration}s)")
-        call_tracker.save()
+        # Perform post-call analysis using Groq (OpenAI-compatible)
+        analysis_client = openai.AsyncOpenAI(
+            api_key=os.getenv("GROQ_API_KEY"),
+            base_url="https://api.groq.com/openai/v1",
+        )
+        await call_tracker.save_enhanced(analysis_client)
         await task.cancel()
+
+    @task.event_handler("on_user_transcript")
+    async def on_user_transcript(task, transcript):
+        call_tracker.add_user_message(transcript)
+
+    @task.event_handler("on_assistant_transcript")
+    async def on_assistant_transcript(task, transcript):
+        call_tracker.add_assistant_message(transcript)
 
     runner = PipelineRunner(handle_sigint=handle_sigint)
     await runner.run(task)
