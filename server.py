@@ -41,6 +41,18 @@ app = FastAPI(title="Acme Corp AI Receptionist")
 async def startup():
     logger.info("Starting Acme Corp AI Receptionist...")
     init_db()
+
+    # Validate required API keys
+    required_keys = {
+        "GROQ_API_KEY": "LLM (Groq)",
+        "DEEPGRAM_API_KEY": "STT/TTS (Deepgram)",
+    }
+    missing = [f"{name} ({desc})" for name, desc in required_keys.items() if not os.getenv(name)]
+    if missing:
+        logger.error(f"MISSING API KEYS: {', '.join(missing)} — bot will NOT respond to callers!")
+    else:
+        logger.info("All API keys present.")
+
     logger.info("Server ready.")
 
 

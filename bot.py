@@ -41,6 +41,18 @@ from pipecat.transports.websocket.fastapi import (
 
 from db import log_call
 
+
+class GroqLLMService(OpenAILLMService):
+    """OpenAILLMService subclass that strips parameters unsupported by Groq."""
+
+    def build_chat_completion_params(self, params_from_context) -> dict:
+        params = super().build_chat_completion_params(params_from_context)
+        # Groq doesn't support these OpenAI-specific params
+        params.pop("service_tier", None)
+        params.pop("max_completion_tokens", None)
+        return params
+
+
 SYSTEM_PROMPT = """You are a friendly, natural-sounding receptionist for Acme Corp.
 
 When someone calls:
@@ -177,8 +189,11 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool, caller_number: 
     # )
 
     # --- GROQ SETUP (Fast LLM Inference) ---
-    llm = OpenAILLMService(
-        api_key=os.getenv("GROQ_API_KEY"),
+    groq_key = os.getenv("GROQ_API_KEY")
+    if not groq_key:
+        logger.error("GROQ_API_KEY is not set! LLM will not work.")
+    llm = GroqLLMService(
+        api_key=groq_key,
         base_url="https://api.groq.com/openai/v1",
         model="llama-3.3-70b-versatile",
     )

@@ -127,9 +127,12 @@ async def entrypoint(ctx: JobContext):
     # )
 
     # --- GROQ SETUP (Fast LLM Inference) ---
+    groq_key = os.getenv("GROQ_API_KEY")
+    if not groq_key:
+        logger.error("GROQ_API_KEY is not set! LLM will not work.")
     llm_service = openai.LLM.with_openai(
         base_url="https://api.groq.com/openai/v1",
-        api_key=os.getenv("GROQ_API_KEY"),
+        api_key=groq_key,
         model="llama-3.3-70b-versatile",
     )
 
