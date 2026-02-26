@@ -17,7 +17,15 @@ from loguru import logger
 from pipecat.adapters.schemas.function_schema import FunctionSchema
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.audio.vad.silero import SileroVADAnalyzer
-from pipecat.frames.frames import LLMRunFrame, TextFrame, TranscriptionFrame
+from pipecat.frames.frames import (
+    AudioRawFrame,
+    Frame,
+    LLMFullResponseStartFrame,
+    LLMRunFrame,
+    TextFrame,
+    TranscriptionFrame,
+    TTSStartedFrame,
+)
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
@@ -26,6 +34,7 @@ from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
     LLMUserAggregatorParams,
 )
+from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 from pipecat.runner.types import RunnerArguments
 from pipecat.runner.utils import parse_telephony_websocket
 from pipecat.serializers.plivo import PlivoFrameSerializer
@@ -40,6 +49,112 @@ from pipecat.transports.websocket.fastapi import (
 )
 
 from db import log_call
+
+
+# ─── Latency Instrumentation ────────────────────────────────────────────────
+
+class LatencyTracker:
+    """Per-turn latency instrumentation.
+
+    Records timestamps at each pipeline stage:
+      T0 — final user transcript received (STT done)
+      T1 — first LLM response frame (LLM started generating)
+      T2 — first TTS audio chunk ready to send
+    """
+
+    def __init__(self):
+        self.turn_count: int = 0
+        self.t0: float | None = None
+        self.t1: float | None = None
+        self.t2: float | None = None
+        self.turn_logs: list[dict] = []
+
+    def mark_t0(self):
+        self.turn_count += 1
+        self.t0 = time.perf_counter()
+        self.t1 = None
+        self.t2 = None
+        logger.info(f"[LATENCY] Turn {self.turn_count} | T0 (transcript received)")
+
+    def mark_t1(self):
+        if self.t0 is None or self.t1 is not None:
+            return
+        self.t1 = time.perf_counter()
+        delta = (self.t1 - self.t0) * 1000
+        logger.info(f"[LATENCY] Turn {self.turn_count} | T1 (first LLM frame): T0→T1 = {delta:.0f}ms")
+
+    def mark_t2(self):
+        if self.t0 is None or self.t2 is not None:
+            return
+        self.t2 = time.perf_counter()
+        t0_t1 = (self.t1 - self.t0) * 1000 if self.t1 else None
+        t1_t2 = (self.t2 - self.t1) * 1000 if self.t1 else None
+        t0_t2 = (self.t2 - self.t0) * 1000
+
+        entry = {
+            "turn": self.turn_count,
+            "t0_t1_ms": round(t0_t1) if t0_t1 is not None else None,
+            "t1_t2_ms": round(t1_t2) if t1_t2 is not None else None,
+            "t0_t2_ms": round(t0_t2),
+        }
+        self.turn_logs.append(entry)
+
+        target_met = "PASS" if t0_t2 < 1500 else "FAIL"
+        logger.info(
+            f"[LATENCY] Turn {self.turn_count} | T2 (first TTS audio): "
+            f"T0→T1={entry['t0_t1_ms']}ms  T1→T2={entry['t1_t2_ms']}ms  "
+            f"T0→T2={entry['t0_t2_ms']}ms  [{target_met} <1500ms target]"
+        )
+
+    def summary(self) -> str:
+        if not self.turn_logs:
+            return "[LATENCY SUMMARY] No turns recorded."
+        lines = ["\n╔══════════════════════════════════════════╗"]
+        lines.append("║        LATENCY SUMMARY (per turn)        ║")
+        lines.append("╠══════════════════════════════════════════╣")
+        for e in self.turn_logs:
+            lines.append(
+                f"║ Turn {e['turn']:>2}:  T0→T1={str(e['t0_t1_ms']):>5}ms  "
+                f"T1→T2={str(e['t1_t2_ms']):>5}ms  T0→T2={e['t0_t2_ms']:>5}ms ║"
+            )
+        t0_t2_vals = [e["t0_t2_ms"] for e in self.turn_logs]
+        avg = sum(t0_t2_vals) / len(t0_t2_vals)
+        p95 = sorted(t0_t2_vals)[int(len(t0_t2_vals) * 0.95)] if len(t0_t2_vals) > 1 else t0_t2_vals[0]
+        worst = max(t0_t2_vals)
+        lines.append("╠══════════════════════════════════════════╣")
+        lines.append(f"║ Avg T0→T2: {avg:>6.0f}ms  P95: {p95:>5}ms  Max: {worst:>5}ms ║")
+        target = "PASS" if avg < 1500 else "FAIL"
+        lines.append(f"║ Target <1500ms: {target:<25}  ║")
+        lines.append("╚══════════════════════════════════════════╝")
+        return "\n".join(lines)
+
+
+class LLMResponseMonitor(FrameProcessor):
+    """Sits between LLM and TTS. Timestamps the first LLM output per turn."""
+
+    def __init__(self, tracker: LatencyTracker, **kwargs):
+        super().__init__(**kwargs)
+        self._tracker = tracker
+
+    async def process_frame(self, frame: Frame, direction: FrameDirection):
+        await super().process_frame(frame, direction)
+        if isinstance(frame, LLMFullResponseStartFrame):
+            self._tracker.mark_t1()
+        await self.push_frame(frame, direction)
+
+
+class TTSAudioMonitor(FrameProcessor):
+    """Sits between TTS and transport output. Timestamps the first audio chunk per turn."""
+
+    def __init__(self, tracker: LatencyTracker, **kwargs):
+        super().__init__(**kwargs)
+        self._tracker = tracker
+
+    async def process_frame(self, frame: Frame, direction: FrameDirection):
+        await super().process_frame(frame, direction)
+        if isinstance(frame, AudioRawFrame):
+            self._tracker.mark_t2()
+        await self.push_frame(frame, direction)
 
 
 class GroqLLMService(OpenAILLMService):
@@ -268,6 +383,7 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool, caller_number: 
     """Set up and run the enhanced AI receptionist pipeline."""
 
     call_tracker = CallTracker(caller_number)
+    latency_tracker = LatencyTracker()
 
     # Initialize AI services
     stt = DeepgramSTTService(
@@ -409,14 +525,20 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool, caller_number: 
         ),
     )
 
-    # Build pipeline
+    # Latency monitors (pass-through processors that timestamp frames)
+    llm_monitor = LLMResponseMonitor(latency_tracker, name="LLMLatencyMonitor")
+    tts_monitor = TTSAudioMonitor(latency_tracker, name="TTSLatencyMonitor")
+
+    # Build pipeline (monitors inserted between stages)
     pipeline = Pipeline(
         [
             transport.input(),
             stt,
             user_aggregator,
             llm,
+            llm_monitor,       # T1: first LLM response frame
             tts,
+            tts_monitor,       # T2: first TTS audio chunk
             transport.output(),
             assistant_aggregator,
         ]
@@ -452,6 +574,8 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool, caller_number: 
     @transport.event_handler("on_client_disconnected")
     async def on_client_disconnected(transport, client):
         logger.info(f"Call disconnected from {caller_number} (duration: {call_tracker.duration}s)")
+        # Log latency summary for the entire call
+        logger.info(latency_tracker.summary())
         # Perform post-call analysis using Groq (OpenAI-compatible)
         analysis_client = openai.AsyncOpenAI(
             api_key=os.getenv("GROQ_API_KEY"),
@@ -462,6 +586,7 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool, caller_number: 
 
     @task.event_handler("on_user_transcript")
     async def on_user_transcript(task, transcript):
+        latency_tracker.mark_t0()  # T0: final transcript received from STT
         call_tracker.add_user_message(transcript)
 
     @task.event_handler("on_assistant_transcript")

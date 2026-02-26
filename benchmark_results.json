@@ -1,0 +1,526 @@
+{
+  "groq-70b": [
+    {
+      "desc": "Greeting \u2014 no tool expected",
+      "expected_tool": null,
+      "error": null,
+      "avg_ttft_ms": 452.5,
+      "avg_total_ms": 499.6,
+      "avg_tok_per_sec": 54.7,
+      "tool_accuracy": 100,
+      "sample_text": "Good morning, welcome to Acme Corp. How can I assist you today?",
+      "sample_tool": null
+    },
+    {
+      "desc": "Hours inquiry",
+      "expected_tool": "get_business_hours",
+      "error": null,
+      "avg_ttft_ms": 197.6,
+      "avg_total_ms": 296.9,
+      "avg_tok_per_sec": 3.4,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "get_business_hours"
+    },
+    {
+      "desc": "Location inquiry",
+      "expected_tool": "get_location",
+      "error": null,
+      "avg_ttft_ms": 226.1,
+      "avg_total_ms": 330.6,
+      "avg_tok_per_sec": 3.0,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "get_location"
+    },
+    {
+      "desc": "Sales transfer",
+      "expected_tool": "transfer_to_sales",
+      "error": null,
+      "avg_ttft_ms": 270.6,
+      "avg_total_ms": 408.6,
+      "avg_tok_per_sec": 2.5,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "transfer_to_sales"
+    },
+    {
+      "desc": "Support transfer",
+      "expected_tool": "transfer_to_support",
+      "error": null,
+      "avg_ttft_ms": 234.3,
+      "avg_total_ms": 345.0,
+      "avg_tok_per_sec": 2.9,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "transfer_to_support"
+    },
+    {
+      "desc": "Billing transfer",
+      "expected_tool": "transfer_to_billing",
+      "error": null,
+      "avg_ttft_ms": 301.9,
+      "avg_total_ms": 417.1,
+      "avg_tok_per_sec": 2.4,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "transfer_to_billing"
+    },
+    {
+      "desc": "Support info",
+      "expected_tool": "get_support_info",
+      "error": null,
+      "avg_ttft_ms": 2975.5,
+      "avg_total_ms": 3182.4,
+      "avg_tok_per_sec": 0.4,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "get_support_info"
+    },
+    {
+      "desc": "Directory lookup",
+      "expected_tool": "get_department_directory",
+      "error": null,
+      "avg_ttft_ms": 3994.7,
+      "avg_total_ms": 4112.1,
+      "avg_tok_per_sec": 0.2,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "get_department_directory"
+    },
+    {
+      "desc": "Status check",
+      "expected_tool": "check_service_status",
+      "error": null,
+      "avg_ttft_ms": 3645.6,
+      "avg_total_ms": 3868.5,
+      "avg_tok_per_sec": 0.3,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "check_service_status"
+    },
+    {
+      "desc": "Holiday schedule",
+      "expected_tool": "get_holiday_schedule",
+      "error": null,
+      "avg_ttft_ms": 3984.4,
+      "avg_total_ms": 4092.7,
+      "avg_tok_per_sec": 0.2,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "get_holiday_schedule"
+    },
+    {
+      "desc": "Ambiguous billing/support",
+      "expected_tool": "transfer_to_billing",
+      "error": null,
+      "avg_ttft_ms": 4008.8,
+      "avg_total_ms": 4133.2,
+      "avg_tok_per_sec": 0.2,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "transfer_to_billing"
+    },
+    {
+      "desc": "Multi-intent (accept either)",
+      "expected_tool": "get_business_hours",
+      "error": null,
+      "avg_ttft_ms": 3715.2,
+      "avg_total_ms": 3858.4,
+      "avg_tok_per_sec": 0.5,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "get_business_hours"
+    }
+  ],
+  "groq-8b": [
+    {
+      "desc": "Greeting \u2014 no tool expected",
+      "expected_tool": null,
+      "error": null,
+      "avg_ttft_ms": 145.3,
+      "avg_total_ms": 172.5,
+      "avg_tok_per_sec": 121.6,
+      "tool_accuracy": 100,
+      "sample_text": "Good morning, thank you for calling Acme Corp. How can I assist you today?",
+      "sample_tool": null
+    },
+    {
+      "desc": "Hours inquiry",
+      "expected_tool": "get_business_hours",
+      "error": null,
+      "avg_ttft_ms": 197.4,
+      "avg_total_ms": 242.4,
+      "avg_tok_per_sec": 4.1,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "get_business_hours"
+    },
+    {
+      "desc": "Location inquiry",
+      "expected_tool": "get_location",
+      "error": null,
+      "avg_ttft_ms": 188.0,
+      "avg_total_ms": 242.9,
+      "avg_tok_per_sec": 4.2,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "get_location"
+    },
+    {
+      "desc": "Sales transfer",
+      "expected_tool": "transfer_to_sales",
+      "error": null,
+      "avg_ttft_ms": 4613.7,
+      "avg_total_ms": 4671.0,
+      "avg_tok_per_sec": 3.0,
+      "tool_accuracy": 67,
+      "sample_text": "",
+      "sample_tool": "transfer_to_sales"
+    },
+    {
+      "desc": "Support transfer",
+      "expected_tool": "transfer_to_support",
+      "error": null,
+      "avg_ttft_ms": 8324.9,
+      "avg_total_ms": 8369.6,
+      "avg_tok_per_sec": 2.3,
+      "tool_accuracy": 0,
+      "sample_text": "I'd be happy to assist you with that. <function=transfer_to_support></function>",
+      "sample_tool": null
+    },
+    {
+      "desc": "Billing transfer",
+      "expected_tool": "transfer_to_billing",
+      "error": null,
+      "avg_ttft_ms": 8324.8,
+      "avg_total_ms": 8398.2,
+      "avg_tok_per_sec": 0.1,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "transfer_to_billing"
+    },
+    {
+      "desc": "Support info",
+      "expected_tool": "get_support_info",
+      "error": null,
+      "avg_ttft_ms": 8338.8,
+      "avg_total_ms": 8432.6,
+      "avg_tok_per_sec": 3.5,
+      "tool_accuracy": 33,
+      "sample_text": "",
+      "sample_tool": "get_support_info"
+    },
+    {
+      "desc": "Directory lookup",
+      "expected_tool": "get_department_directory",
+      "error": null,
+      "avg_ttft_ms": 8343.5,
+      "avg_total_ms": 8361.2,
+      "avg_tok_per_sec": 0.1,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "get_department_directory"
+    },
+    {
+      "desc": "Status check",
+      "expected_tool": "check_service_status",
+      "error": null,
+      "avg_ttft_ms": 7991.2,
+      "avg_total_ms": 8041.2,
+      "avg_tok_per_sec": 0.2,
+      "tool_accuracy": 67,
+      "sample_text": "Check_service_status{}",
+      "sample_tool": null
+    },
+    {
+      "desc": "Holiday schedule",
+      "expected_tool": "get_holiday_schedule",
+      "error": null,
+      "avg_ttft_ms": 6659.0,
+      "avg_total_ms": 6767.1,
+      "avg_tok_per_sec": 7.0,
+      "tool_accuracy": 33,
+      "sample_text": "",
+      "sample_tool": "get_holiday_schedule"
+    },
+    {
+      "desc": "Ambiguous billing/support",
+      "expected_tool": "transfer_to_billing",
+      "error": null,
+      "avg_ttft_ms": 8321.7,
+      "avg_total_ms": 8367.6,
+      "avg_tok_per_sec": 0.1,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "transfer_to_billing"
+    },
+    {
+      "desc": "Multi-intent (accept either)",
+      "expected_tool": "get_business_hours",
+      "error": null,
+      "avg_ttft_ms": 8095.9,
+      "avg_total_ms": 8174.5,
+      "avg_tok_per_sec": 2.3,
+      "tool_accuracy": 67,
+      "sample_text": "",
+      "sample_tool": "get_business_hours"
+    }
+  ],
+  "oai-4o-mini": [
+    {
+      "desc": "Greeting \u2014 no tool expected",
+      "expected_tool": null,
+      "error": null,
+      "avg_ttft_ms": 726.6,
+      "avg_total_ms": 849.6,
+      "avg_tok_per_sec": 12.3,
+      "tool_accuracy": 100,
+      "sample_text": "Good morning! How can I assist you today?",
+      "sample_tool": null
+    },
+    {
+      "desc": "Hours inquiry",
+      "expected_tool": "get_business_hours",
+      "error": null,
+      "avg_ttft_ms": 853.7,
+      "avg_total_ms": 870.9,
+      "avg_tok_per_sec": 1.2,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "get_business_hours"
+    },
+    {
+      "desc": "Location inquiry",
+      "expected_tool": "get_location",
+      "error": null,
+      "avg_ttft_ms": 772.1,
+      "avg_total_ms": 789.3,
+      "avg_tok_per_sec": 1.3,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "get_location"
+    },
+    {
+      "desc": "Sales transfer",
+      "expected_tool": "transfer_to_sales",
+      "error": null,
+      "avg_ttft_ms": 997.1,
+      "avg_total_ms": 1016.0,
+      "avg_tok_per_sec": 1.2,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "transfer_to_sales"
+    },
+    {
+      "desc": "Support transfer",
+      "expected_tool": "transfer_to_support",
+      "error": null,
+      "avg_ttft_ms": 829.5,
+      "avg_total_ms": 855.3,
+      "avg_tok_per_sec": 1.2,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "transfer_to_support"
+    },
+    {
+      "desc": "Billing transfer",
+      "expected_tool": "transfer_to_billing",
+      "error": null,
+      "avg_ttft_ms": 799.5,
+      "avg_total_ms": 819.7,
+      "avg_tok_per_sec": 1.3,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "transfer_to_billing"
+    },
+    {
+      "desc": "Support info",
+      "expected_tool": "get_support_info",
+      "error": null,
+      "avg_ttft_ms": 870.0,
+      "avg_total_ms": 889.8,
+      "avg_tok_per_sec": 1.2,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "get_support_info"
+    },
+    {
+      "desc": "Directory lookup",
+      "expected_tool": "get_department_directory",
+      "error": null,
+      "avg_ttft_ms": 766.6,
+      "avg_total_ms": 791.7,
+      "avg_tok_per_sec": 1.3,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "get_department_directory"
+    },
+    {
+      "desc": "Status check",
+      "expected_tool": "check_service_status",
+      "error": null,
+      "avg_ttft_ms": 742.5,
+      "avg_total_ms": 759.0,
+      "avg_tok_per_sec": 1.3,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "check_service_status"
+    },
+    {
+      "desc": "Holiday schedule",
+      "expected_tool": "get_holiday_schedule",
+      "error": null,
+      "avg_ttft_ms": 786.1,
+      "avg_total_ms": 809.6,
+      "avg_tok_per_sec": 1.3,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "get_holiday_schedule"
+    },
+    {
+      "desc": "Ambiguous billing/support",
+      "expected_tool": "transfer_to_billing",
+      "error": null,
+      "avg_ttft_ms": 702.8,
+      "avg_total_ms": 720.8,
+      "avg_tok_per_sec": 1.4,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "transfer_to_billing"
+    },
+    {
+      "desc": "Multi-intent (accept either)",
+      "expected_tool": "get_business_hours",
+      "error": null,
+      "avg_ttft_ms": 1368.8,
+      "avg_total_ms": 1385.8,
+      "avg_tok_per_sec": 1.4,
+      "tool_accuracy": 100,
+      "sample_text": "",
+      "sample_tool": "get_business_hours"
+    }
+  ],
+  "nvidia-9b": [
+    {
+      "desc": "Greeting \u2014 no tool expected",
+      "expected_tool": null,
+      "error": "404 page not found",
+      "avg_ttft_ms": null,
+      "avg_total_ms": null,
+      "avg_tok_per_sec": null,
+      "tool_accuracy": 0,
+      "sample_text": ""
+    },
+    {
+      "desc": "Hours inquiry",
+      "expected_tool": "get_business_hours",
+      "error": "404 page not found",
+      "avg_ttft_ms": null,
+      "avg_total_ms": null,
+      "avg_tok_per_sec": null,
+      "tool_accuracy": 0,
+      "sample_text": ""
+    },
+    {
+      "desc": "Location inquiry",
+      "expected_tool": "get_location",
+      "error": "404 page not found",
+      "avg_ttft_ms": null,
+      "avg_total_ms": null,
+      "avg_tok_per_sec": null,
+      "tool_accuracy": 0,
+      "sample_text": ""
+    },
+    {
+      "desc": "Sales transfer",
+      "expected_tool": "transfer_to_sales",
+      "error": "404 page not found",
+      "avg_ttft_ms": null,
+      "avg_total_ms": null,
+      "avg_tok_per_sec": null,
+      "tool_accuracy": 0,
+      "sample_text": ""
+    },
+    {
+      "desc": "Support transfer",
+      "expected_tool": "transfer_to_support",
+      "error": "404 page not found",
+      "avg_ttft_ms": null,
+      "avg_total_ms": null,
+      "avg_tok_per_sec": null,
+      "tool_accuracy": 0,
+      "sample_text": ""
+    },
+    {
+      "desc": "Billing transfer",
+      "expected_tool": "transfer_to_billing",
+      "error": "404 page not found",
+      "avg_ttft_ms": null,
+      "avg_total_ms": null,
+      "avg_tok_per_sec": null,
+      "tool_accuracy": 0,
+      "sample_text": ""
+    },
+    {
+      "desc": "Support info",
+      "expected_tool": "get_support_info",
+      "error": "404 page not found",
+      "avg_ttft_ms": null,
+      "avg_total_ms": null,
+      "avg_tok_per_sec": null,
+      "tool_accuracy": 0,
+      "sample_text": ""
+    },
+    {
+      "desc": "Directory lookup",
+      "expected_tool": "get_department_directory",
+      "error": "404 page not found",
+      "avg_ttft_ms": null,
+      "avg_total_ms": null,
+      "avg_tok_per_sec": null,
+      "tool_accuracy": 0,
+      "sample_text": ""
+    },
+    {
+      "desc": "Status check",
+      "expected_tool": "check_service_status",
+      "error": "404 page not found",
+      "avg_ttft_ms": null,
+      "avg_total_ms": null,
+      "avg_tok_per_sec": null,
+      "tool_accuracy": 0,
+      "sample_text": ""
+    },
+    {
+      "desc": "Holiday schedule",
+      "expected_tool": "get_holiday_schedule",
+      "error": "404 page not found",
+      "avg_ttft_ms": null,
+      "avg_total_ms": null,
+      "avg_tok_per_sec": null,
+      "tool_accuracy": 0,
+      "sample_text": ""
+    },
+    {
+      "desc": "Ambiguous billing/support",
+      "expected_tool": "transfer_to_billing",
+      "error": "404 page not found",
+      "avg_ttft_ms": null,
+      "avg_total_ms": null,
+      "avg_tok_per_sec": null,
+      "tool_accuracy": 0,
+      "sample_text": ""
+    },
+    {
+      "desc": "Multi-intent (accept either)",
+      "expected_tool": "get_business_hours",
+      "error": "404 page not found",
+      "avg_ttft_ms": null,
+      "avg_total_ms": null,
+      "avg_tok_per_sec": null,
+      "tool_accuracy": 0,
+      "sample_text": ""
+    }
+  ]
+}
