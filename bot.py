@@ -743,14 +743,14 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool, caller_number: 
             )
         await task.cancel()
 
-    @task.event_handler("on_user_transcript")
-    async def on_user_transcript(task, transcript):
+    @user_aggregator.event_handler("on_user_turn_stopped")
+    async def on_user_turn_stopped(aggregator, strategy, message):
         latency_tracker.mark_t0()  # T0: final transcript received from STT
-        call_tracker.add_user_message(transcript)
+        call_tracker.add_user_message(message.content)
 
-    @task.event_handler("on_assistant_transcript")
-    async def on_assistant_transcript(task, transcript):
-        call_tracker.add_assistant_message(transcript)
+    @assistant_aggregator.event_handler("on_assistant_turn_stopped")
+    async def on_assistant_turn_stopped(aggregator, message):
+        call_tracker.add_assistant_message(message.content)
 
     runner = PipelineRunner(handle_sigint=handle_sigint)
     await runner.run(task)

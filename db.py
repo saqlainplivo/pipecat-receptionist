@@ -44,7 +44,11 @@ def init_db():
                 created_at TIMESTAMP DEFAULT NOW()
             )
         """)
-        # Add latency_json column if it doesn't exist (safe migration)
+        # Add columns if they don't exist (safe migrations)
+        cur.execute("""
+            ALTER TABLE receptionist_call_logs
+            ADD COLUMN IF NOT EXISTS summary TEXT DEFAULT ''
+        """)
         cur.execute("""
             ALTER TABLE receptionist_call_logs
             ADD COLUMN IF NOT EXISTS latency_json TEXT DEFAULT NULL
