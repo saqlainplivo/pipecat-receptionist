@@ -239,7 +239,20 @@ class TTSAudioMonitor(FrameProcessor):
 
 
 class GroqLLMService(OpenAILLMService):
-    """OpenAILLMService subclass that strips parameters unsupported by Groq."""
+    """OpenAILLMService for Groq with automatic OpenAI fallback on 429 rate limits.
+
+    Groq's free tier has aggressive token limits (100K/day for 70B models).
+    When rate-limited, this transparently falls back to OpenAI gpt-4o-mini
+    so the caller never hears silence.
+    """
+
+    def __init__(self, *, fallback_api_key=None, fallback_model="gpt-4o-mini", **kwargs):
+        super().__init__(**kwargs)
+        self._fallback_client = None
+        self._fallback_model = fallback_model
+        if fallback_api_key:
+            self._fallback_client = openai.AsyncOpenAI(api_key=fallback_api_key)
+            logger.info(f"[LLM] Groq primary with OpenAI {fallback_model} fallback enabled")
 
     def build_chat_completion_params(self, params_from_context) -> dict:
         params = super().build_chat_completion_params(params_from_context)
@@ -247,6 +260,18 @@ class GroqLLMService(OpenAILLMService):
         params.pop("service_tier", None)
         params.pop("max_completion_tokens", None)
         return params
+
+    async def get_chat_completions(self, params_from_context):
+        try:
+            return await super().get_chat_completions(params_from_context)
+        except openai.RateLimitError:
+            if not self._fallback_client:
+                raise
+            logger.warning(f"[LLM FALLBACK] Groq rate-limited — switching to OpenAI {self._fallback_model}")
+            params = self.build_chat_completion_params(params_from_context)
+            params["model"] = self._fallback_model
+            chunks = await self._fallback_client.chat.completions.create(**params)
+            return chunks
 
 
 SYSTEM_PROMPT = """\
@@ -439,8 +464,12 @@ class CallTracker:
             # Use LLM to perform post-call analysis for better intent and summary
             analysis_prompt = f"Analyze this phone call transcript and provide: 1. A 1-sentence summary. 2. The primary intent (one of: sales, support, billing, hours, location, directory, status, holiday, other).\n\nTranscript:\n{self.transcript}"
 
+            # Detect which provider we're using from the base_url
+            is_groq = hasattr(llm_service, '_base_url') and 'groq' in str(getattr(llm_service, '_base_url', ''))
+            model = "llama-3.3-70b-versatile" if is_groq else "gpt-4o-mini"
+
             response = await llm_service.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+                model=model,
                 messages=[
                     {"role": "system", "content": "You are a call analyst. Provide output in JSON format: {\"summary\": \"...\", \"intent\": \"...\"}"},
                     {"role": "user", "content": analysis_prompt}
@@ -493,14 +522,19 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool, caller_number: 
     #     model="zhipuai/glm-4-9b-chat",
     # )
 
-    # --- GROQ SETUP (Fast LLM Inference) ---
+    # --- GROQ SETUP (Fast LLM Inference) with OpenAI fallback ---
     groq_key = os.getenv("GROQ_API_KEY")
+    openai_key = os.getenv("OPENAI_API_KEY")
     if not groq_key:
         logger.error("GROQ_API_KEY is not set! LLM will not work.")
+    if not openai_key:
+        logger.warning("OPENAI_API_KEY not set — no fallback if Groq is rate-limited")
     llm = GroqLLMService(
         api_key=groq_key,
         base_url="https://api.groq.com/openai/v1",
         model="llama-3.3-70b-versatile",
+        fallback_api_key=openai_key,
+        fallback_model="gpt-4o-mini",
     )
 
     # --- DEEPGRAM AURA TTS (Active — low-latency streaming for telephony) ---
@@ -690,14 +724,23 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool, caller_number: 
         # Log latency summary for the entire call
         logger.info(latency_tracker.summary())
         # Perform post-call analysis and save with latency metrics
-        analysis_client = openai.AsyncOpenAI(
-            api_key=os.getenv("GROQ_API_KEY"),
-            base_url="https://api.groq.com/openai/v1",
-        )
-        await call_tracker.save_enhanced(
-            analysis_client,
-            latency_data=latency_tracker.turn_logs,
-        )
+        # Use Groq for analysis, fall back to OpenAI if rate-limited
+        if os.getenv("GROQ_API_KEY"):
+            analysis_client = openai.AsyncOpenAI(
+                api_key=os.getenv("GROQ_API_KEY"),
+                base_url="https://api.groq.com/openai/v1",
+            )
+        elif os.getenv("OPENAI_API_KEY"):
+            analysis_client = openai.AsyncOpenAI(
+                api_key=os.getenv("OPENAI_API_KEY"),
+            )
+        else:
+            analysis_client = None
+        if analysis_client:
+            await call_tracker.save_enhanced(
+                analysis_client,
+                latency_data=latency_tracker.turn_logs,
+            )
         await task.cancel()
 
     @task.event_handler("on_user_transcript")

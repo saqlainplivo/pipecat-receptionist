@@ -53,6 +53,12 @@ async def startup():
     else:
         logger.info("All API keys present.")
 
+    # Optional: OpenAI fallback for when Groq hits rate limits
+    if os.getenv("OPENAI_API_KEY"):
+        logger.info("OPENAI_API_KEY set — fallback LLM enabled (Groq 429 → OpenAI gpt-4o-mini)")
+    else:
+        logger.warning("OPENAI_API_KEY not set — no fallback if Groq is rate-limited")
+
     logger.info("Server ready.")
 
 
