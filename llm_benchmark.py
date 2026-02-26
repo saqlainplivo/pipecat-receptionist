@@ -54,11 +54,11 @@ MODELS = [
         "model": "gpt-4o-mini",
     },
     {
-        "name": "NVIDIA NIM — glm-4-9b-chat",
-        "short": "nvidia-9b",
-        "base_url": "https://integrate.api.nvidia.com/v1",
-        "api_key_env": "NVIDIA_NIM_API_KEY",
-        "model": "zhipuai/glm-4-9b-chat",
+        "name": "OpenAI — gpt-4.1-nano",
+        "short": "oai-4.1-nano",
+        "base_url": "https://api.openai.com/v1",
+        "api_key_env": "OPENAI_API_KEY",
+        "model": "gpt-4.1-nano",
     },
 ]
 
@@ -209,6 +209,7 @@ async def run_model_benchmark(model_cfg: dict, iterations: int = 3):
     client = openai.AsyncOpenAI(
         api_key=api_key,
         base_url=model_cfg["base_url"],
+        timeout=30.0,
     )
 
     results = []
@@ -220,7 +221,7 @@ async def run_model_benchmark(model_cfg: dict, iterations: int = 3):
             r = await benchmark_streaming(client, model_cfg["model"], user_msg, use_tools)
             iteration_results.append(r)
             # Small delay to avoid rate limits
-            await asyncio.sleep(0.3)
+            await asyncio.sleep(1.0)  # delay between iterations (Groq rate limits)
 
         # Aggregate across iterations
         successful = [r for r in iteration_results if r["error"] is None]
