@@ -21,6 +21,7 @@ from loguru import logger
 from pipecat.adapters.schemas.function_schema import FunctionSchema
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.audio.vad.silero import SileroVADAnalyzer
+from pipecat.audio.vad.vad_analyzer import VADParams
 from pipecat.frames.frames import (
     AudioRawFrame,
     ErrorFrame,
@@ -502,21 +503,21 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool, caller_number: 
         model="llama-3.3-70b-versatile",
     )
 
-    # --- DEEPGRAM AURA TTS (Previous default) ---
-    # tts = DeepgramTTSService(
-    #     api_key=os.getenv("DEEPGRAM_API_KEY"),
-    #     voice="aura-asteria-en",
-    # )
-
-    # --- VOICE.AI TTS (Current — native ulaw_8000 for telephony) ---
-    voiceai_key = os.getenv("VOICEAI_API_KEY")
-    if not voiceai_key:
-        logger.error("VOICEAI_API_KEY is not set! TTS will not work.")
-    tts = VoiceAiTTSService(
-        api_key=voiceai_key or "",
-        audio_format="ulaw_8000",
-        language="en",
+    # --- DEEPGRAM AURA TTS (Active — low-latency streaming for telephony) ---
+    tts = DeepgramTTSService(
+        api_key=os.getenv("DEEPGRAM_API_KEY"),
+        voice="aura-asteria-en",
     )
+
+    # --- VOICE.AI TTS (Commented out — benchmarked at 499ms TTFA vs Deepgram 277ms) ---
+    # voiceai_key = os.getenv("VOICEAI_API_KEY")
+    # if not voiceai_key:
+    #     logger.error("VOICEAI_API_KEY is not set! TTS will not work.")
+    # tts = VoiceAiTTSService(
+    #     api_key=voiceai_key or "",
+    #     audio_format="ulaw_8000",
+    #     language="en",
+    # )
 
     # Register function handlers (new FunctionCallParams API)
     async def handle_get_business_hours(params: FunctionCallParams):
@@ -615,10 +616,25 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool, caller_number: 
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     context = LLMContext(messages, tools=TOOLS)
 
+    # SileroVAD — local neural voice-activity detector
+    # Tuned for telephony:
+    #   confidence=0.6 — higher threshold to filter line noise / breathing
+    #   start_secs=0.3 — require 300ms of speech before triggering (avoids clicks)
+    #   stop_secs=0.5  — 500ms silence before declaring end-of-utterance
+    #   min_volume=0.5 — ignore very quiet background sounds
+    vad = SileroVADAnalyzer(
+        params=VADParams(
+            confidence=0.6,
+            start_secs=0.3,
+            stop_secs=0.5,
+            min_volume=0.5,
+        )
+    )
+
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
         context,
         user_params=LLMUserAggregatorParams(
-            vad_analyzer=SileroVADAnalyzer(),
+            vad_analyzer=vad,
         ),
     )
 

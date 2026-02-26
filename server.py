@@ -45,8 +45,7 @@ async def startup():
     # Validate required API keys
     required_keys = {
         "GROQ_API_KEY": "LLM (Groq)",
-        "DEEPGRAM_API_KEY": "STT (Deepgram)",
-        "VOICEAI_API_KEY": "TTS (Voice.ai)",
+        "DEEPGRAM_API_KEY": "STT + TTS (Deepgram)",
     }
     missing = [f"{name} ({desc})" for name, desc in required_keys.items() if not os.getenv(name)]
     if missing:
