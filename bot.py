@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import os
 import time
+from collections.abc import AsyncGenerator
+
 import openai
 
 from loguru import logger
@@ -21,6 +23,7 @@ from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.frames.frames import (
     AudioRawFrame,
+    ErrorFrame,
     Frame,
     LLMFullResponseStartFrame,
     LLMRunFrame,
@@ -40,6 +43,7 @@ from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 from pipecat.runner.types import RunnerArguments
 from pipecat.runner.utils import parse_telephony_websocket
 from pipecat.serializers.plivo import PlivoFrameSerializer
+from pipecat.services.ai_services import TTSService
 from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.deepgram.tts import DeepgramTTSService
 from pipecat.services.llm_service import FunctionCallParams
@@ -51,6 +55,80 @@ from pipecat.transports.websocket.fastapi import (
 )
 
 from db import log_call
+
+
+# ─── Voice.ai TTS Service ────────────────────────────────────────────────────
+
+class VoiceAiTTSService(TTSService):
+    """TTS service using Voice.ai's HTTP streaming endpoint.
+
+    Outputs 8kHz mu-law audio (ulaw_8000) — native telephony format,
+    no resampling needed for Plivo PSTN calls.
+    """
+
+    def __init__(
+        self,
+        *,
+        api_key: str,
+        voice_id: str | None = None,
+        model: str = "voiceai-tts-v1-latest",
+        language: str = "en",
+        audio_format: str = "ulaw_8000",
+        base_url: str = "https://dev.voice.ai/api/v1/tts/speech/stream",
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self._api_key = api_key
+        self._voice_id = voice_id
+        self._model = model
+        self._language = language
+        self._audio_format = audio_format
+        self._base_url = base_url
+        # Parse sample rate from format string (e.g. "ulaw_8000" → 8000)
+        self._sample_rate = int(audio_format.split("_")[-1]) if "_" in audio_format else 8000
+
+    def can_generate_metrics(self) -> bool:
+        return True
+
+    async def run_tts(self, text: str) -> AsyncGenerator[Frame, None]:
+        logger.debug(f"VoiceAiTTS: Generating [{text}]")
+
+        import aiohttp
+
+        headers = {
+            "Authorization": f"Bearer {self._api_key}",
+            "Content-Type": "application/json",
+        }
+        body = {
+            "text": text,
+            "audio_format": self._audio_format,
+            "language": self._language,
+            "model": self._model,
+        }
+        if self._voice_id:
+            body["voice_id"] = self._voice_id
+
+        try:
+            await self.start_ttfb_metrics()
+            async with aiohttp.ClientSession() as session:
+                async with session.post(self._base_url, headers=headers, json=body) as resp:
+                    if resp.status != 200:
+                        error_text = await resp.text()
+                        logger.error(f"VoiceAiTTS error (status {resp.status}): {error_text}")
+                        yield ErrorFrame(f"VoiceAiTTS error: {resp.status}")
+                        return
+
+                    async for chunk in resp.content.iter_chunked(1024):
+                        if chunk:
+                            await self.stop_ttfb_metrics()
+                            yield AudioRawFrame(
+                                audio=chunk,
+                                sample_rate=self._sample_rate,
+                                num_channels=1,
+                            )
+        except Exception as e:
+            logger.exception(f"VoiceAiTTS exception: {e}")
+            yield ErrorFrame(f"VoiceAiTTS exception: {e}")
 
 
 # ─── Latency Instrumentation ────────────────────────────────────────────────
@@ -424,9 +502,20 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool, caller_number: 
         model="llama-3.3-70b-versatile",
     )
 
-    tts = DeepgramTTSService(
-        api_key=os.getenv("DEEPGRAM_API_KEY"),
-        voice="aura-asteria-en",
+    # --- DEEPGRAM AURA TTS (Previous default) ---
+    # tts = DeepgramTTSService(
+    #     api_key=os.getenv("DEEPGRAM_API_KEY"),
+    #     voice="aura-asteria-en",
+    # )
+
+    # --- VOICE.AI TTS (Current — native ulaw_8000 for telephony) ---
+    voiceai_key = os.getenv("VOICEAI_API_KEY")
+    if not voiceai_key:
+        logger.error("VOICEAI_API_KEY is not set! TTS will not work.")
+    tts = VoiceAiTTSService(
+        api_key=voiceai_key or "",
+        audio_format="ulaw_8000",
+        language="en",
     )
 
     # Register function handlers (new FunctionCallParams API)

@@ -8,3 +8,4 @@ websockets>=12.0
 psycopg2-binary>=2.9.0
 loguru>=0.7.0
 plivo>=4.47.0
+aiohttp>=3.9.0

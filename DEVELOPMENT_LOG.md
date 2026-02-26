@@ -160,11 +160,12 @@ Commit 11:  ~90 lines  — structured routing table, conversation rules, voice/s
 
 ### Models Tested (3 iterations in code)
 
-| Model | Provider | Commit | Voice | Streaming | 8kHz Native | Latency (TTFA) | Status |
+| Model | Provider | Commit | Voice | Streaming | 8kHz Native | TTFA (measured) | Status |
 |-------|----------|--------|-------|-----------|-------------|----------------|--------|
-| ElevenLabs Multilingual v2 | ElevenLabs | `ba0ba40` | Rachel | Yes (WebSocket) | No (resamples) | `___` ms | Replaced |
-| OpenAI TTS | OpenAI | `057aa88` | Alloy | Chunked | No (resamples) | `___` ms | Replaced |
-| Deepgram Aura | Deepgram | `49ee059` | Asteria | Yes (native streaming) | Yes | `___` ms | **Selected** |
+| ElevenLabs Multilingual v2 | ElevenLabs | `ba0ba40` | Rachel | Yes (WebSocket) | No (resamples) | N/A (key expired) | Replaced |
+| OpenAI TTS | OpenAI | `057aa88` | Alloy | Chunked | No (24kHz PCM) | 1286ms | Replaced |
+| Deepgram Aura | Deepgram | `49ee059` | Asteria | Yes (native streaming) | linear16 (needs conversion) | **277ms** | Replaced |
+| Voice.ai | Voice.ai | current | Default | Yes (HTTP streaming) | **ulaw_8000 native** | 499ms | **Selected** |
 
 ### Why Each Was Replaced
 
@@ -188,16 +189,39 @@ Commit 11:  ~90 lines  — structured routing table, conversation rules, voice/s
 | Inworld TTS | Inworld | <120ms | Gaming/interactive focus. No pipecat plugin available |
 | PlayHT 2.0 | PlayHT | ~150ms | Not evaluated |
 
-### TTS Metrics (To Be Measured)
+### TTS Benchmark Results (Measured 2026-02-26)
 
-| Metric | ElevenLabs Rachel | OpenAI Alloy | Deepgram Aura Asteria | ElevenLabs Flash v2.5 |
-|--------|-------------------|-------------|----------------------|----------------------|
-| Time to First Audio (ms) | `___` | `___` | `___` | `___` |
-| Audio generation rate (realtime factor) | `___` | `___` | `___` | `___` |
-| MOS score (subjective quality 1-5) | `___` | `___` | `___` | `___` |
-| Naturalness on telephony (1-5) | `___` | `___` | `___` | `___` |
-| 8kHz output quality (1-5) | `___` | `___` | `___` | `___` |
-| Cost per 1M characters | `___` | `___` | `___` | `___` |
+> Benchmark: 6 sentences x 3 iterations each. HTTP streaming, measuring time-to-first-audio chunk.
+> Run via `tts_benchmark.py`. Raw data in `tts_benchmark_results.json`.
+
+| Metric | Deepgram Aura | Voice.ai (ulaw_8000) | OpenAI TTS (alloy) | ElevenLabs Flash v2.5 |
+|--------|--------------|---------------------|-------------------|----------------------|
+| Avg TTFA (ms) | **277** | 499 | 1286 | N/A (401 — key invalid) |
+| Avg total time (ms) | **383** | 1772 | 2121 | N/A |
+| Avg audio size (bytes) | 67,679 | **32,455** | 201,433 | N/A |
+| 8kHz native output | linear16 (needs resample) | **ulaw_8000 native** | 24kHz PCM (needs resample) | ulaw_8000 (untested) |
+| Streaming | Yes (chunked) | Yes (chunked) | Yes (chunked) | Yes (WebSocket) |
+| MOS score (subjective 1-5) | `___` | `___` | `___` | `___` |
+| Cost per 1M characters | ~$0.015 | `___` | ~$0.015 | ~$0.30 |
+
+#### Per-Sentence TTFA Breakdown (ms)
+
+| Sentence | Deepgram | Voice.ai | OpenAI |
+|----------|----------|----------|--------|
+| "Hello, thank you for calling..." | 476 | 906 | 1735 |
+| "We're open Monday through Friday..." | 230 | 371 | 1113 |
+| "Let me connect you with sales..." | 241 | 370 | 987 |
+| "I'm sorry, I didn't quite catch..." | 238 | 373 | 1492 |
+| "Our office is at 123 Main St..." (long) | 241 | 510 | 1504 |
+| "Thank you, have a wonderful day..." | 235 | 465 | 888 |
+
+#### Key Findings
+
+1. **Deepgram Aura is fastest** — 277ms avg TTFA, 2-5x faster than alternatives. But outputs linear16 which needs conversion for telephony.
+2. **Voice.ai provides native ulaw_8000** — no resampling needed for Plivo PSTN. 499ms TTFA is acceptable for real-time conversation. Smallest audio output (50% less bandwidth than Deepgram).
+3. **OpenAI TTS is slowest** — 1286ms TTFA makes it unsuitable for real-time telephony. Output is 24kHz PCM requiring heavy downsampling.
+4. **ElevenLabs key is expired/invalid** — returned 401. Cannot benchmark.
+5. **Voice.ai is now the active TTS** — switched from Deepgram Aura (commit `f88d798` → current) because native ulaw_8000 eliminates the resampling step in the pipeline.
 
 ---
 

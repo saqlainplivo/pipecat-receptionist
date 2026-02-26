@@ -1,0 +1,178 @@
+{
+  "voiceai": [
+    {
+      "text": "Hello, thank you for calling Acme Corp. How can I ",
+      "error": null,
+      "avg_ttfa_ms": 905.6,
+      "avg_total_ms": 2240.8,
+      "avg_bytes": 28672
+    },
+    {
+      "text": "We're open Monday through Friday, nine to five Pac",
+      "error": null,
+      "avg_ttfa_ms": 370.8,
+      "avg_total_ms": 1421.6,
+      "avg_bytes": 28501
+    },
+    {
+      "text": "Let me connect you with our sales team right away.",
+      "error": null,
+      "avg_ttfa_ms": 369.9,
+      "avg_total_ms": 1132.3,
+      "avg_bytes": 20907
+    },
+    {
+      "text": "I'm sorry, I didn't quite catch that. Could you sa",
+      "error": null,
+      "avg_ttfa_ms": 373.2,
+      "avg_total_ms": 1428.7,
+      "avg_bytes": 28672
+    },
+    {
+      "text": "Our office is located at 123 Main Street in San Fr",
+      "error": null,
+      "avg_ttfa_ms": 510.3,
+      "avg_total_ms": 2684.5,
+      "avg_bytes": 54272
+    },
+    {
+      "text": "Thank you for calling Acme Corp. Have a wonderful ",
+      "error": null,
+      "avg_ttfa_ms": 464.6,
+      "avg_total_ms": 1724.3,
+      "avg_bytes": 33707
+    }
+  ],
+  "deepgram": [
+    {
+      "text": "Hello, thank you for calling Acme Corp. How can I ",
+      "error": null,
+      "avg_ttfa_ms": 475.6,
+      "avg_total_ms": 626.1,
+      "avg_bytes": 60558
+    },
+    {
+      "text": "We're open Monday through Friday, nine to five Pac",
+      "error": null,
+      "avg_ttfa_ms": 230.2,
+      "avg_total_ms": 255.8,
+      "avg_bytes": 56100
+    },
+    {
+      "text": "Let me connect you with our sales team right away.",
+      "error": null,
+      "avg_ttfa_ms": 240.7,
+      "avg_total_ms": 246.2,
+      "avg_bytes": 40868
+    },
+    {
+      "text": "I'm sorry, I didn't quite catch that. Could you sa",
+      "error": null,
+      "avg_ttfa_ms": 237.8,
+      "avg_total_ms": 451.9,
+      "avg_bytes": 67432
+    },
+    {
+      "text": "Our office is located at 123 Main Street in San Fr",
+      "error": null,
+      "avg_ttfa_ms": 241.4,
+      "avg_total_ms": 457.3,
+      "avg_bytes": 116658
+    },
+    {
+      "text": "Thank you for calling Acme Corp. Have a wonderful ",
+      "error": null,
+      "avg_ttfa_ms": 234.9,
+      "avg_total_ms": 261.5,
+      "avg_bytes": 64458
+    }
+  ],
+  "elevenlabs": [
+    {
+      "text": "Hello, thank you for calling Acme Corp. How can I ",
+      "error": "HTTP 401: {\"detail\":{\"status\":\"detected_unusual_activity\",\"message\":\"Unusual activity detected. Free Tier usag",
+      "avg_ttfa_ms": null,
+      "avg_total_ms": null,
+      "avg_bytes": 0
+    },
+    {
+      "text": "We're open Monday through Friday, nine to five Pac",
+      "error": "HTTP 401: {\"detail\":{\"status\":\"detected_unusual_activity\",\"message\":\"Unusual activity detected. Free Tier usag",
+      "avg_ttfa_ms": null,
+      "avg_total_ms": null,
+      "avg_bytes": 0
+    },
+    {
+      "text": "Let me connect you with our sales team right away.",
+      "error": "HTTP 401: {\"detail\":{\"status\":\"detected_unusual_activity\",\"message\":\"Unusual activity detected. Free Tier usag",
+      "avg_ttfa_ms": null,
+      "avg_total_ms": null,
+      "avg_bytes": 0
+    },
+    {
+      "text": "I'm sorry, I didn't quite catch that. Could you sa",
+      "error": "HTTP 401: {\"detail\":{\"status\":\"detected_unusual_activity\",\"message\":\"Unusual activity detected. Free Tier usag",
+      "avg_ttfa_ms": null,
+      "avg_total_ms": null,
+      "avg_bytes": 0
+    },
+    {
+      "text": "Our office is located at 123 Main Street in San Fr",
+      "error": "HTTP 401: {\"detail\":{\"status\":\"detected_unusual_activity\",\"message\":\"Unusual activity detected. Free Tier usag",
+      "avg_ttfa_ms": null,
+      "avg_total_ms": null,
+      "avg_bytes": 0
+    },
+    {
+      "text": "Thank you for calling Acme Corp. Have a wonderful ",
+      "error": "HTTP 401: {\"detail\":{\"status\":\"detected_unusual_activity\",\"message\":\"Unusual activity detected. Free Tier usag",
+      "avg_ttfa_ms": null,
+      "avg_total_ms": null,
+      "avg_bytes": 0
+    }
+  ],
+  "openai": [
+    {
+      "text": "Hello, thank you for calling Acme Corp. How can I ",
+      "error": null,
+      "avg_ttfa_ms": 1734.6,
+      "avg_total_ms": 2575.0,
+      "avg_bytes": 176200
+    },
+    {
+      "text": "We're open Monday through Friday, nine to five Pac",
+      "error": null,
+      "avg_ttfa_ms": 1112.8,
+      "avg_total_ms": 1784.9,
+      "avg_bytes": 167200
+    },
+    {
+      "text": "Let me connect you with our sales team right away.",
+      "error": null,
+      "avg_ttfa_ms": 987.3,
+      "avg_total_ms": 1707.1,
+      "avg_bytes": 143800
+    },
+    {
+      "text": "I'm sorry, I didn't quite catch that. Could you sa",
+      "error": null,
+      "avg_ttfa_ms": 1492.5,
+      "avg_total_ms": 2391.3,
+      "avg_bytes": 199600
+    },
+    {
+      "text": "Our office is located at 123 Main Street in San Fr",
+      "error": null,
+      "avg_ttfa_ms": 1504.3,
+      "avg_total_ms": 2686.1,
+      "avg_bytes": 352000
+    },
+    {
+      "text": "Thank you for calling Acme Corp. Have a wonderful ",
+      "error": null,
+      "avg_ttfa_ms": 887.5,
+      "avg_total_ms": 1584.3,
+      "avg_bytes": 169800
+    }
+  ]
+}
