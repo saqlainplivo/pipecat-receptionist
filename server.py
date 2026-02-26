@@ -383,17 +383,92 @@ async def get_logs():
         conn.close()
 
 
+@app.get("/metrics")
+async def get_metrics():
+    """View per-turn latency metrics from recent calls."""
+    conn = get_connection()
+    if not conn:
+        return JSONResponse({"error": "Database not configured"}, status_code=503)
+
+    try:
+        cur = conn.cursor()
+        # Per-turn metrics from the dedicated table
+        cur.execute("""
+            SELECT
+                m.call_log_id,
+                c.caller_number,
+                c.created_at,
+                c.duration,
+                m.turn_number,
+                m.t0_t1_ms,
+                m.t1_t2_ms,
+                m.t0_t2_ms,
+                m.target_met
+            FROM call_latency_metrics m
+            JOIN receptionist_call_logs c ON c.id = m.call_log_id
+            ORDER BY m.call_log_id DESC, m.turn_number ASC
+            LIMIT 200
+        """)
+        rows = cur.fetchall()
+
+        # Aggregate by call
+        calls = {}
+        for row in rows:
+            call_id = row[0]
+            if call_id not in calls:
+                calls[call_id] = {
+                    "call_id": call_id,
+                    "caller": row[1],
+                    "timestamp": row[2].isoformat() if row[2] else None,
+                    "duration_s": row[3],
+                    "turns": [],
+                }
+            calls[call_id]["turns"].append({
+                "turn": row[4],
+                "t0_t1_ms": row[5],
+                "t1_t2_ms": row[6],
+                "t0_t2_ms": row[7],
+                "target_met": row[8],
+            })
+
+        # Compute aggregates
+        all_t0_t2 = [row[7] for row in rows if row[7] is not None]
+        summary = {}
+        if all_t0_t2:
+            sorted_vals = sorted(all_t0_t2)
+            summary = {
+                "total_turns": len(all_t0_t2),
+                "total_calls": len(calls),
+                "avg_t0_t2_ms": round(sum(all_t0_t2) / len(all_t0_t2)),
+                "p50_t0_t2_ms": sorted_vals[len(sorted_vals) // 2],
+                "p95_t0_t2_ms": sorted_vals[int(len(sorted_vals) * 0.95)],
+                "max_t0_t2_ms": max(all_t0_t2),
+                "min_t0_t2_ms": min(all_t0_t2),
+                "target_pass_rate": round(sum(1 for v in all_t0_t2 if v < 1500) / len(all_t0_t2) * 100),
+            }
+
+        cur.close()
+        return {"summary": summary, "calls": list(calls.values())}
+
+    except Exception as e:
+        logger.error(f"Failed to fetch metrics: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+    finally:
+        conn.close()
+
+
 if __name__ == "__main__":
     import uvicorn
 
     port = int(os.getenv("PORT", "8000"))
     logger.info(f"Starting Acme Corp AI Receptionist on port {port}")
     logger.info("Endpoints:")
-    logger.info(f"  GET      /health - Health check")
-    logger.info(f"  GET      /       - Frontend UI")
-    logger.info(f"  GET      /api    - Service info (JSON)")
-    logger.info(f"  GET/POST /answer - Plivo Answer URL")
-    logger.info(f"  WS       /ws     - WebSocket audio streaming")
-    logger.info(f"  GET      /logs   - View call logs")
+    logger.info(f"  GET      /health  - Health check")
+    logger.info(f"  GET      /        - Frontend UI")
+    logger.info(f"  GET      /api     - Service info (JSON)")
+    logger.info(f"  GET/POST /answer  - Plivo Answer URL")
+    logger.info(f"  WS       /ws      - WebSocket audio streaming")
+    logger.info(f"  GET      /logs    - View call logs")
+    logger.info(f"  GET      /metrics - View latency metrics")
 
     uvicorn.run(app, host="0.0.0.0", port=port)

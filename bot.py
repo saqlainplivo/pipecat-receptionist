@@ -8,6 +8,8 @@ Handles incoming calls with:
   - Interruption handling and conversation context
 """
 
+from __future__ import annotations
+
 import os
 import time
 import openai
@@ -349,16 +351,15 @@ class CallTracker:
         self.detected_intent = intent
         logger.info(f"Intent detected: {intent}")
 
-    async def save_enhanced(self, llm_service):
-        """Perform post-call analysis and save to DB."""
+    async def save_enhanced(self, llm_service, latency_data: list[dict] | None = None):
+        """Perform post-call analysis and save to DB with latency metrics."""
         if not self.transcript_parts:
             return
 
         try:
             # Use LLM to perform post-call analysis for better intent and summary
             analysis_prompt = f"Analyze this phone call transcript and provide: 1. A 1-sentence summary. 2. The primary intent (one of: sales, support, billing, hours, location, directory, status, holiday, other).\n\nTranscript:\n{self.transcript}"
-            
-            # Simple direct call to LLM for analysis
+
             response = await llm_service.chat.completions.create(
                 model="llama-3.3-70b-versatile",
                 messages=[
@@ -367,16 +368,23 @@ class CallTracker:
                 ],
                 response_format={"type": "json_object"}
             )
-            
+
             import json
             analysis = json.loads(response.choices[0].message.content)
             self.summary = analysis.get("summary", "No summary")
             self.detected_intent = analysis.get("intent", "unknown")
-            
+
         except Exception as e:
             logger.error(f"Post-call analysis failed: {e}")
 
-        log_call(self.caller_number, self.transcript, self.detected_intent, self.duration, self.summary)
+        log_call(
+            self.caller_number,
+            self.transcript,
+            self.detected_intent,
+            self.duration,
+            self.summary,
+            latency_data=latency_data,
+        )
 
 
 async def run_bot(transport: BaseTransport, handle_sigint: bool, caller_number: str):
@@ -576,12 +584,15 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool, caller_number: 
         logger.info(f"Call disconnected from {caller_number} (duration: {call_tracker.duration}s)")
         # Log latency summary for the entire call
         logger.info(latency_tracker.summary())
-        # Perform post-call analysis using Groq (OpenAI-compatible)
+        # Perform post-call analysis and save with latency metrics
         analysis_client = openai.AsyncOpenAI(
             api_key=os.getenv("GROQ_API_KEY"),
             base_url="https://api.groq.com/openai/v1",
         )
-        await call_tracker.save_enhanced(analysis_client)
+        await call_tracker.save_enhanced(
+            analysis_client,
+            latency_data=latency_tracker.turn_logs,
+        )
         await task.cancel()
 
     @task.event_handler("on_user_transcript")
